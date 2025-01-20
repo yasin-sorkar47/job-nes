@@ -4,16 +4,16 @@ import { useQuery } from "react-query";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import useAuth from "../hooks/useAuth";
+import useAxios from "../hooks/useAxiosSecure";
 
 const MyPostedJobs = () => {
   const { user } = useAuth();
+  const axiosSecure = useAxios();
 
   const { data: jobs = [], refetch } = useQuery({
     queryKey: ["jobs", user?.email],
     queryFn: async () => {
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL}/jobs/${user?.email}`
-      );
+      const { data } = await axiosSecure.get(`/jobs/${user?.email}`);
 
       return data;
     },
