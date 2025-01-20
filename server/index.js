@@ -1,8 +1,9 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-require("dotenv").config();
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -14,6 +15,20 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
+
+// 1. install jwt token
+// 2. import jwt token package
+// 3. to make token jwt.sing(data, secret Key,  {
+//   httpOnly: true,
+//   secure: false, // for development environment
+//   sameSite: "strict",
+// })  then add cors config {
+//   origin: ["http://localhost:5173"],
+//   credentials: true,
+// } in the client in post url add this  { withCredentials: true }
+
+// to send toke from server to client res.cookie(name, token, options)
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ze0za.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -25,6 +40,22 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access......." });
+  }
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access......." });
+    }
+
+    req.user = decoded.email;
+    next();
+  });
+};
 
 async function run() {
   try {
@@ -104,8 +135,12 @@ async function run() {
     });
 
     // get jobs based on user
-    app.get("/jobs/:email", async (req, res) => {
+    app.get("/jobs/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      const user = req.user;
+      if (email !== user) {
+        return res.status(403).send({ message: "forbidden access.........." });
+      }
       const query = { "buyer.email": email };
       const result = await jobCollection.find(query).toArray();
       res.send(result);
